@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.chart rect {
+  fill: #638c81;
+}
+
+.chart text {
+  fill: #dbe0df;
+  font: 10px sans-serif;
+  text-anchor: end;
+}
+
+</style>
+<svg class="chart"></svg>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+var datafile = "Street_Tree_List.csv";
+
+var width = 920,
+    barHeight = 10;
+
+var x = d3.scale.linear()
+    .range([0, width-200]);
+
+var chart = d3.select(".chart")
+    .attr("width", width);
+
+var getCounts = function(data){
+  // get counts of each type of tree in the data set
+  var counts = d3.nest()
+  .key(function(d){ return d['qSpecies'] })
+  .rollup(function(leaves){ return d3.sum(leaves, function(d){return 1;}) })
+  .entries(data)
+  .map(function(d){ return{Species: d.key, Count: d.values}; })
+
+  // we might want to only show most common trees, so let's sort them by counts
+  return counts.sort(function(a, b){ return d3.descending(a.Count, b.Count); })
+}
+
+
+d3.csv(datafile, function(d) {
+  d.count = 1;
+  return d;
+
+}, function(error, data) {
+
+  if (error) throw error;
+
+  var counts = getCounts(data);
+  console.log(counts)
+
+  x.domain([0, d3.max(counts, function(d) { return d.Count; })]);
+  console.log(x.domain())
+
+  chart.attr("height", barHeight * counts.length);
+
+  var bar = chart.selectAll("g")
+      .data(counts)
+    .enter().append("g")
+      .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+
+  bar.append("rect")
+      .attr("width", function(d) { return x(d.Count); })
+      .attr("height", barHeight - 1);
+
+  bar.append("text")
+      .attr("x", function(d) { return x(d.Count) - 3; })
+      .attr("y", barHeight / 2)
+      .attr("dy", ".35em")
+      .text(function(d) { return d.Count; });
+
+  bar.append("text")
+      .attr("x", function(d) { return x(d.Count) + 3; })
+      .attr("y", barHeight / 2)
+      .attr("dy", ".35em")
+      .style("fill", "grey")
+      .style("text-anchor",  "start")
+      .text(function(d) { return d.Species; });
+});
+
+
+
+</script>

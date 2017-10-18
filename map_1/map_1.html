@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Map  street trees in San Francisco, built with d3.js with leaflet.js</title>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="L.CanvasLayer.js"></script>
+    <script src="http://d3js.org/d3.v4.min.js"></script>
+     
+</head>
+<body>
+
+<h1>Leaflet + Canvas</h1>
+<div id="mapid" style="width: 800px; height: 600px"></div>
+
+	
+<script>
+
+// initialize Leaflet map, and set initial zoom and coordinatess
+var mymap = L.map('mapid').setView([37.77139, -122.44486], 13);
+
+//-----------------------------------------------------------
+// NOTE: You'll need to get your own access Token from Mapbox
+//       Dev account sign up is easy and free, with some dev Tokens included
+//		 https://www.mapbox.com/help/define-access-token/
+//-----------------------------------------------------------
+// add basemap layer
+L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+    maxZoom: 18,
+    id: 'mapbox.light',
+    accessToken: 'pk.eyJ1Ijoia3Jpc3RpbmhlbnJ5IiwiYSI6ImNqMWdxMjd5aDAwM28zM2xtaGV2azYwcjYifQ.NTJiOqcnhP-_3etf4aZYmQ'
+}).addTo(mymap);
+
+
+
+
+
+
+
+// drawing on canvas layer from https://github.com/Sumbera/gLayers.Leaflet
+//var data = [[37.77139, -122.44486]];
+var data = dataset;
+
+var canvasLayer = L.canvasLayer()
+            .delegate(this) // -- if we do not inherit from L.CanvasLayer we can setup a delegate to receive events from L.CanvasLayer
+            .addTo(mymap);
+      
+function onDrawLayer(info) {
+    
+    var dotSize = 10/info.zoom
+    //var alpha = .9;  
+    var alpha = 0.2 + (info.zoom/100)*3;
+   
+    var ctx = info.canvas.getContext('2d');
+    ctx.clearRect(0, 0, info.canvas.width, info.canvas.height);
+    
+    for (var i = 0; i < dataset.length; i++) {
+
+    	var d = dataset[i];
+    	//console.log(d)
+    	if (info.bounds.contains([d.loc[0], d.loc[1]])) {
+
+    		ctx.fillStyle = "rgba(0,100,0,.5)";
+    		
+            dot = info.layer._map.latLngToContainerPoint([d.loc[0], d.loc[1]]);
+            
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, dotSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+        }
+        
+    }
+};
+
+
+
+
+function strToLocation(s){
+	var arr = s.slice(1,-1).split(',');
+	arr[0] = parseFloat(arr[0]);
+	arr[1] = parseFloat(arr[1]);
+	return arr;
+}
+
+
+	
+// Get data
+var datafile = "Street_Tree_List.csv"; 
+var dataset = [];
+d3.csv(datafile, function(data){
+
+		species = d3.map(data, function(d){return d['qSpecies'];}).keys()
+		console.log("number of species: ", species.length)
+
+
+		data.forEach(function(d) {
+
+			// 1. Some data is missing Location values, so have to test for it, and replace with something. --> might want to remove these records
+
+			if(d['Location']  == ""){
+				d['Location'] = "(0,0)"
+			}
+
+
+			d.loc = strToLocation(d['Location']);
+			
+			
+			try{
+				d.LatLng = new L.LatLng(d.loc[0], d.loc[1]);
+			} catch(err) {
+				console.log('error', d.LatLng, err)
+			}
+
+		})
+
+		dataset = data;
+		canvasLayer.drawLayer();
+
+
+})
+
+
+
+
+</script>
+</body>
+</html>
